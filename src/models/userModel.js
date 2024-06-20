@@ -1,6 +1,6 @@
 const {Schema,model} = require('mongoose');
 const { DEFAULT_IMAGE } = require('../secret');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new Schema({
     name:{
@@ -33,6 +33,8 @@ const userSchema = new Schema({
     },
     image:{
         type:String,
+        // require:true,
+        required:[true,'You Must Upload Your  Image!'],
         default: DEFAULT_IMAGE
     },
     address:{

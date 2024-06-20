@@ -1,22 +1,32 @@
-const errorResponse = (res, { statusCode = 500, message = "Internal Server Error:errorResponse" }) => {
+const errorResponse = (res,
+    {
+        statusCode = 500,
+        message = "Internal Server Error:errorResponse",
+        sendFrom=''
+    }) => {
     ////{statusCode,message} body er moddhe thakbe bole
     return res.status(statusCode).json({
         success: false,
-        message: message
+        message: message,
+        fromWhere: "from errorResponse (responseController.js)",
+        sendFrom
     })
 
 }
 const successResponse = (res,
-    { 
-        statusCode = 200, 
-        message = "SuccessResponse", 
-        payload = {} 
+    {
+        statusCode = 200,
+        message = "SuccessResponse",
+        payload = {},
+        sendFrom = ''
     }) => {
     ////{statusCode,message} body er moddhe thakbe bole
     return res.status(statusCode).json({
         success: true,
         message: message,
-        payload
+        payload,
+        fromWhere: "from successResponse (responseController.js)",
+        sendFrom
     })
 
 }

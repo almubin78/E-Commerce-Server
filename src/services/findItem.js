@@ -19,4 +19,4 @@ const findWithId = async (Model,id,options={}) => {
 }
 
 
-module.exports = { findWithId}
+module.exports = { findWithId }

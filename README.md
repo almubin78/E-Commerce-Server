@@ -3,8 +3,10 @@
 
 npm install http-errors
 npm i express-rate-limit
-npm 
+npm i nodemailer
 ```
+
+
 ﻿
 
  # E-commerce MERN Stack project
