@@ -1,6 +1,16 @@
 const express = require('express');
-const { getUsers, getUserByID, deleteUserById, createUser, activateUserAccount} = require('../controller/userController');
+const {
+    getUsers,
+    getUserByID,
+    deleteUserById,
+    createUser,
+    activateUserAccount,
+    updateUserById
+} = require('../controller/userController');
 const upload = require('../middlewares/uploadFile');
+const { validateUserRegistration } = require('../validators/auth');
+const runValidation = require('../validators');
+const uploadUserImage = require('../middlewares/uploadFileSecond');
 const userRouter = express.Router();
 
 
@@ -15,12 +25,33 @@ const isLoggedIn = (req, res, next) => {
         res.status(401).send('Unauthorized')
     }
 }
-userRouter.get('/',isLoggedIn, getUsers)
+
+/* 
+create user
+*/
+userRouter.post(
+    '/process-register',
+    // upload.single("image"), ////for uploadFile.js
+    uploadUserImage.single("image"),////for uploadFileSecond.js
+    validateUserRegistration,
+    runValidation,
+    createUser
+)
+/*  
+verify User
+*/
+userRouter.post('/activate', activateUserAccount)
+/* 
+get all users
+*/
+userRouter.get('/', isLoggedIn, getUsers)
 userRouter.get('/:id', getUserByID)
 userRouter.delete('/:id', deleteUserById)
-userRouter.post('/process-register', upload.single("image"),createUser)
-// userRouter.post('/process-register', upload,createUser)
-userRouter.post('/verify', activateUserAccount)
+/* 
+updating user
+*/
+// userRouter.put('/:id', upload.single("image"), updateUserById)
+userRouter.put('/:id', uploadUserImage.single("image"), updateUserById)
 
 
 

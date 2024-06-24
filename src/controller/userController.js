@@ -2,15 +2,15 @@ const User = require("../models/userModel")
 const createError = require('http-errors');
 const jwt = require('jsonwebtoken');
 const { successResponse } = require("./responseController");
-const { default: mongoose } = require("mongoose");
 const { findWithId } = require("../services/findItem");
 
 
-const { use } = require("../router/userRouter");
+
 const deleteImage = require("../helper/deleteImg");
 const { createJsonWebToken } = require("../helper/jsonwebtoken");
 const { JWT_ACTIVATION, client_url } = require("../secret");
 const emailWithNodeMail = require("../helper/email");
+const runValidation = require("../validators");
 
 
 const getUsers = async (req, res, next) => {
@@ -49,7 +49,8 @@ const getUsers = async (req, res, next) => {
                     nextPage: page + 1 <= Math.ceil(count / limit) ? page + 1 : null,
 
                 }
-            }
+            },
+            sendFrom: 'getUser Controller'
         })
     } catch (error) {
         next(error)
@@ -74,7 +75,8 @@ const getUserByID = async (req, res, next) => {
             payload: {
                 user
 
-            }
+            },
+            sendFrom: 'getUserById : controller'
         })
     } catch (error) {
 
@@ -105,6 +107,7 @@ const deleteUserById = async (req, res, next) => {
         return successResponse(res, {
             statusCode: 208,
             message: 'User Deleted Successfully',
+            sendFrom: 'deleteUserById : controller'
 
         })
     } catch (error) {
@@ -113,31 +116,69 @@ const deleteUserById = async (req, res, next) => {
     }
 
 }
+/* 
+
+processRegister (createUser)
+*/
 const createUser = async (req, res, next) => {
     try {
-        const { name, email, password, phone, address,image } = req.body;
-        // const userExits = await User.exists({ email: email })
-        // console.log(userExits,email, 'user exists');
-        // console.log(newUser,'==new user from controller');
-        // if (userExits) {
-        //     throw createError(409, 'Email Already Exists, Please Login')
-        // }
-        const newUser = { name, email, password, phone, address,image };
-        // console.log(newUser);
-        const token = createJsonWebToken(newUser, JWT_ACTIVATION, '10m');
-        // console.log('token from create user==', token);
-        // send mail with node Mailer
 
-        // prepare email
+
+        // image related
+        const image = req.file;
+        if (!image) {
+
+            throw createError(400, 'ImageFile is required:from Create User:controller')
+        }
+        if (image.size > 1024 * 1024 * 2) {
+            //1024 * 1024 *2 = 2 mb
+            throw new Error('File Size is too large, max 2mb')
+        }
+
+
+        /* 
+        user check
+        */
+        const { name, email, password, phone, address } = req.body;
+
+        const userExits = await User.exists({ email: email });
+
+        if (userExits) {
+            throw createError(409,
+                'Email Already Exists, Please Login')
+        }
+
+        const newUser = { name, email, password, phone, address, image }
+
+        // const imageBufferString = image.buffer.toString('base64'); //so image become as buffer String
+        // const newUser = { name, email, password, phone, address, image: imageBufferString }
+
+        /* 
+        create Token
+        */
+
+        const payload = { name, email, password, phone, address }
+        const token = createJsonWebToken(payload, JWT_ACTIVATION, '10m');
+
+
+        /* 
+           prepare email
+        */
+
         const emailData = {
             email,
             subject: 'Account Activation Email',
             html: `
                 <h2>Hello ${name}</h2>
-                <p>Please click here <a href='${client_url}/api/users/activate/${token}' target='_blank'>to active your account</a> </p>
+                <p>Science and Technology এর পক্ষ থেকে তোমায় স্বাগত!! </p>
+                <p style="color:red">পরবর্তি ধাপে যেতে  <a href='${client_url}/api/users/activate/${token}' target='_blank'>এখানে ক্লিক কর</a> </p>
+                <img src="https://i.ibb.co/hyqMD1J/lamiya-2.jpg" alt="Girl in a jacket" width="400" height="300">
+                
             `
         }
-
+        /* 
+         send mail with node Mailer
+        */
         try {
             // await emailWithNodeMail(emailData);
         } catch (emailError) {
@@ -148,12 +189,12 @@ const createUser = async (req, res, next) => {
         return successResponse(res, {
             statusCode: 201,
             message: `Please Go to Your ${email} for completing your registrations process`,
-            // payload: { token }
-            payload: {newUser,token},
-            sendFrom:'CreateUser Controller'
+            payload: { newUser, token },
+            sendFrom: 'CreateUser Controller'
         })
 
     } catch (error) {
+        console.log(error, '=====error');
 
         next(error)
     }
@@ -178,7 +219,7 @@ const activateUserAccount = async (req, res, next) => {
                 statusCode: 201,
                 message: `Your account has been activated successfully!! Congratulations`,
                 payload: newUser,
-                sendFrom:'activateUserAccount (controller)'
+                sendFrom: 'activateUserAccount (controller)'
             })
 
         } catch (error) {
@@ -196,6 +237,50 @@ const activateUserAccount = async (req, res, next) => {
     }
 
 }
+const updateUserById = async (req, res, next) => {
+    try {
+        const userId = req.params.id;
+        await findWithId(User, userId) //if error come 
+        const updateOptions = { new: true, runValidation: true, context: 'query' }
+
+        let updates = {};
+
+        for (let key in req.body) {
+            if (['name', 'email', 'password', 'phone', 'address'].includes(key)) {
+                updates[key] = req.body[key]
+            } else if (['email'].includes(key)) {
+                throw createError(404, 'Email can not be updated')
+            }
+        }
+        const image = req.file;
+        if (image) {
+            if (image.size > 1024 * 1024 * 2) {
+                //1024 * 1024 *2 = 2 mb
+                throw new Error('File Size is too large, max 2mb')
+            }
+            updates.image = image.buffer.toString('base64')
+        }
+        //don't delete
+        // if some one update email wrongly so you can prevent it to update if 
+        // delete updates.email;
+
+        // updated user
+        const updatedUser = await User.findByIdAndUpdate(userId, updates, updateOptions).select('-password');
+
+        if (!updatedUser) {
+            throw createError(404, 'User with this id does not exist')
+        }
+
+        return successResponse(res, {
+            statusCode: 200,
+            message: 'updating User from updateUserById: controller',
+            payload: updatedUser,
+            sendFrom: 'updateUserById : controller'
+        })
+    } catch (error) {
+
+    }
+}
 
 
 module.exports = {
@@ -203,5 +288,30 @@ module.exports = {
     getUserByID,
     deleteUserById,
     createUser,
-    activateUserAccount
+    activateUserAccount,
+    updateUserById
 }
+
+/* 
+//if you dont use for loop then make it simple
+       let updates = {};
+        //    name,email,password,phone,address,image
+
+        if (req.body.name) {
+            updates.name = req.body.name
+        }
+        if (req.body.email) {
+            updates.email = req.body.email
+        }
+        if (req.body.password) {
+            updates.password = req.body.password
+        }
+        if (req.body.phone) {
+            updates.phone = req.body.phone
+        }
+        if (req.body.address) {
+            updates.address = req.body.address
+        }
+
+
+*/

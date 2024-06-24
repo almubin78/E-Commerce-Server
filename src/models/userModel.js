@@ -1,5 +1,5 @@
 const {Schema,model} = require('mongoose');
-const { DEFAULT_IMAGE } = require('../secret');
+const {  DEFAULT_IMAGE_PATH } = require('../secret');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new Schema({
@@ -32,14 +32,15 @@ const userSchema = new Schema({
         
     },
     image:{
-        type:String,
-        // require:true,
-        required:[true,'You Must Upload Your  Image!'],
-        default: DEFAULT_IMAGE
+        
+        type:Buffer,
+        contentType:String,
+        require:[true, 'User Image is required:user Model']
     },
     address:{
         type:String,
         required:[true,'You Must Entire Your Address!!'],
+        minLength:[3,"Address can be at least 3 Character"] 
     },
     
     phone:{
@@ -59,5 +60,22 @@ const userSchema = new Schema({
     
 },{timestamps:true}) 
 
-const User = model('Users',userSchema)
+const User = model('NewUsers',userSchema)
 module.exports = User; 
+
+// PREVIOUS USES 
+/* 
+    image:{
+        // require:true,
+        // required:[true,'You Must Upload Your  Image!'],
+        type:String,
+        default: DEFAULT_IMAGE_PATH
+    },
+
+
+
+
+
+
+
+*/

@@ -2,13 +2,15 @@ const express = require('express');
 const app = express();
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 const createError = require('http-errors');
 const xssClean = require('xss-clean');
-
+const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const userRouter = require('./router/userRouter');
 const seedRouter = require('./router/seedRouter');
 const { errorResponse } = require('./controller/responseController');
+const authRouter = require('./router/authRouter');
 const limiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minutes
     limit: 5, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
@@ -20,11 +22,14 @@ app.use(limiter) ////for all route, indevidually kore zay
 app.use(xssClean()) //// top a rakhte hobe 
 app.use(morgan('dev'))
 app.use(bodyParser.json())
-app.use(bodyParser.urlencoded({ extended: true }))
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cookieParser())
+app.use(cors())
 // require('dotenv').config()
 
 app.use('/api/users',userRouter)
 app.use('/api/seed',seedRouter)
+app.use('/api/auth',authRouter)
 
 
 
